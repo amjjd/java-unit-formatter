@@ -52,6 +52,33 @@ Caveats
 * Formatting of the number of units is delegated to a `NumberFormat` which may
   use parentheses to format a negative number; there is no way to get the unit
   inside the parentheses in this case.
+  
+Maven
+-----
+
+Add a `repository` to your `pom.xml`:
+
+    <repositories>
+      ...
+      <repository>
+        <id>cemerick-snapshots</id>
+        <url>https://github.com/amjjd/amjjd-mvn-repo/raw/master/releases/</url>
+      </repository>
+      ...
+    </repositories>
+
+... and a `dependency`:
+
+    <dependencies>
+      ...
+      <dependency>
+        <groupId>com.amjjd</groupId>
+        <artifactId>java-alphanum</artifactId>
+        <version>0.1</version>
+        <scope>compile</scope>
+      </dependency>
+      ...
+    </dependencies>
 
 License
 -------
