@@ -48,10 +48,11 @@ Sample code
 Caveats
 -------
 
-* Parsing isn't supported.
 * Formatting of the number of units is delegated to a `NumberFormat` which may
   use parentheses to format a negative number; there is no way to get the unit
   inside the parentheses in this case.
+* `FieldPosition` is not supported.
+* `setParseIntegerOnly` is unlikely to work as expected.
   
 Maven
 -----
@@ -73,8 +74,8 @@ Add a `repository` to your `pom.xml`:
       ...
       <dependency>
         <groupId>com.amjjd</groupId>
-        <artifactId>java-alphanum</artifactId>
-        <version>0.1</version>
+        <artifactId>java-unit-formatter</artifactId>
+        <version>0.2</version>
         <scope>compile</scope>
       </dependency>
       ...

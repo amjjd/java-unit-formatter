@@ -20,6 +20,7 @@ package com.amjjd.unitformat;
 
 import static org.junit.Assert.assertEquals;
 
+import java.text.ParseException;
 import java.util.Locale;
 
 import org.junit.Test;
@@ -27,7 +28,7 @@ import org.junit.Test;
 public class UnitFormatTest
 {
 	@Test
-	public void testBytesInstance()
+	public void testBytesInstanceFormatting()
 	{
 		UnitFormat format = UnitFormat.getBytesInstance(Locale.ENGLISH);
 		assertEquals(1, format.getMinimumIntegerDigits());
@@ -62,7 +63,30 @@ public class UnitFormatTest
 	}
 	
 	@Test
-	public void testSIInstance()
+	public void testBytesInstanceParsing() throws ParseException
+	{
+		UnitFormat format = UnitFormat.getBytesInstance(Locale.ENGLISH);
+
+		assertEquals(0L, format.parse("0 B"));
+
+		assertEquals(25L * 1024L + 512L, format.parse("25.5 KiB"));
+		assertEquals(100L * 1024L * 1024L, format.parse("100 MiB"));
+		assertEquals(1024L, format.parse("1 KiB"));
+
+		assertEquals(768L, format.parse("768 B"));
+		assertEquals(1024.0 * 0.8, format.parse("0.8 KiB"));
+		assertEquals(1024.0 * 1024.0 * 0.8, format.parse("0.8 MiB"));
+
+		// note the inaccuracy of such a large double
+		assertEquals(1.2089258196146292E27, format.parse("1,000 YiB"));
+
+		format = UnitFormat.getBytesInstance(Locale.FRENCH);
+		assertEquals(25L * 1024L + 512L, format.parse("25,5 Kio"));
+		assertEquals(1024L, format.parse("1 Kio"));
+	}
+
+	@Test
+	public void testSIInstanceFormatting()
 	{
 		UnitFormat format = UnitFormat.getSIInstance(Locale.ENGLISH, "m");
 		format.setMinimumIntegerDigits(1);
@@ -83,5 +107,27 @@ public class UnitFormatTest
 		assertEquals("749 mm", format.format(0.749));
 		assertEquals("750 mm", format.format(0.75));
 		assertEquals("0.751 m", format.format(0.751));
+	}
+
+	@Test
+	public void testSIInstanceParsing() throws ParseException
+	{
+		UnitFormat format = UnitFormat.getSIInstance(Locale.ENGLISH, "m");
+
+		assertEquals(0L, format.parse("0 m"));
+		assertEquals(25500L, format.parse("25.5 km"));
+
+		assertEquals(750L, format.parse("750 m"));
+		assertEquals(751L, format.parse("0.751 km"));
+
+		assertEquals(0.1, format.parse("100 mm"));
+		assertEquals(0.001, format.parse("1 mm"));
+		// note the inaccuracy
+		assertEquals(9.999999999999999E-5, format.parse("100 µm"));
+		assertEquals(0.000001, format.parse("1 µm"));
+
+		assertEquals(0.749, format.parse("749 mm"));
+		assertEquals(0.75, format.parse("750 mm"));
+		assertEquals(0.751, format.parse("0.751 m"));
 	}
 }

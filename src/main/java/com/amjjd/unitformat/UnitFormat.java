@@ -1,7 +1,7 @@
 /*
  * UnitFormat.java - A unit-prefix selecting number formatter
  * 
- * Copyright 2008 Andrew Duffy
+ * Copyright 2008-2012 Andrew Duffy
  * http://github.com/amjjd
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ package com.amjjd.unitformat;
 
 import java.math.RoundingMode;
 import java.text.FieldPosition;
+import java.text.ChoiceFormat;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParsePosition;
@@ -32,10 +33,11 @@ import java.util.ResourceBundle;
  * 
  * Caveats:
  * <ul>
- * <li>Parsing is not supported</li>
  * <li>Formatting of the number of units is delegated to a {@link NumberFormat}
  * which may use parentheses to format a negative number; there is no way to get
  * the unit inside the parentheses in this case.</li>
+ * <li>{@Link FieldPosition} is not supported.</li>
+ * <li>{@link #setParseIntegerOnly} is unlikely to work as expected.</li>
  * </ul>
  */
 public class UnitFormat extends NumberFormat
@@ -116,7 +118,7 @@ public class UnitFormat extends NumberFormat
 	 */
 	public static UnitFormat getSIInstance(Locale locale, String symbol)
 	{
-		return new UnitFormat(NumberFormat.getInstance(locale), symbol);
+		return new UnitFormat(NumberFormat.getInstance(locale), symbol).init();
 	}
 
 	/**
@@ -147,7 +149,7 @@ public class UnitFormat extends NumberFormat
 		format.interval = 1024.0;
 		format.nextPrefixAt = 768.0;
 		format.multiples = IECMULTIPLES;
-		return format;
+		return format.init();
 	}
 
 	/**
@@ -183,7 +185,7 @@ public class UnitFormat extends NumberFormat
 		format.setMinimumFractionDigits(0);
 		format.setMaximumFractionDigits(1);
 
-		return format;
+		return format.init();
 	}
 
 	/**
@@ -216,7 +218,7 @@ public class UnitFormat extends NumberFormat
 	{
 		UnitFormat format = getBytesInstance(locale);
 		format.multiples = CONFUSINGMULTIPLES;
-		return format;
+		return format.init();
 	}
 	
 	@Override
@@ -267,7 +269,77 @@ public class UnitFormat extends NumberFormat
 	@Override
 	public Number parse(String source, ParsePosition parsePosition)
 	{
-		throw new UnsupportedOperationException("Parsing not supported yet");
+		int startIndex = parsePosition.getIndex(), endIndex = -1;
+		double value = Double.NaN, scale = 1.0;
+
+		// try with no prefix
+		Object[] number = noPrefixParser.parse(source, parsePosition);
+		if(parsePosition.getErrorIndex() < 0 && parsePosition.getIndex() != startIndex)
+		{
+			value = ((Number)number[0]).doubleValue();
+			endIndex = parsePosition.getIndex();
+		}
+
+		// try with a prefix regardless of success above, in case it's longer
+		parsePosition.setErrorIndex(-1);
+		parsePosition.setIndex(startIndex);
+		Object[] numberAndPrefix = parser.parse(source, parsePosition);
+		if(parsePosition.getErrorIndex() < 0 && parsePosition.getIndex() != startIndex && parsePosition.getIndex() > endIndex)
+		{
+			value = ((Number)numberAndPrefix[0]).doubleValue();
+			scale = ((Number)numberAndPrefix[1]).doubleValue();
+		}
+		else if(endIndex < 0)
+		{
+			return null;
+		}
+		else
+		{
+			parsePosition.setErrorIndex(-1);
+			parsePosition.setIndex(endIndex);
+		}
+
+		double scaled = value * scale;
+		long l = (long)scaled;
+		if((double)l == scaled)
+			return l;
+		return scaled;
+
+	}
+
+	private MessageFormat noPrefixParser;
+	private MessageFormat parser;
+
+	private UnitFormat init() {
+		// Neither MessageFormat nor ChoiceFormat likes parsing an empty string,
+		// so we need to handle an empty prefix specially.
+		String parseFormat = new MessageFormat(format).format(new Object[]{"{0,number}", "", symbol.length() > 0 ? ("'" + symbol + "'") : ""}).trim();
+		noPrefixParser = new MessageFormat(parseFormat);
+		noPrefixParser.setFormatByArgumentIndex(0, numberFormat);
+
+		parseFormat = new MessageFormat(format).format(new Object[]{"{0,number}", "{1}", symbol.length() > 0 ? ("'" + symbol + "'") : ""}).trim();
+		parser = new MessageFormat(parseFormat);
+		parser.setFormatByArgumentIndex(0, numberFormat);
+
+		double[] limits = new double[subdivisions.length + multiples.length];
+		String[] prefixes = new String[limits.length];
+		double limit = 1.0;
+		for(int i=0; i<subdivisions.length; i++)
+		{
+			limit /= interval;
+			limits[subdivisions.length - i - 1] = limit;
+			prefixes[subdivisions.length - i - 1] = subdivisions[i];
+		}
+		limit = 1.0;
+		for(int i=0; i<multiples.length; i++)
+		{
+			limit *= interval;
+			limits[subdivisions.length + i] = limit;
+			prefixes[subdivisions.length + i] = multiples[i];
+		}
+		parser.setFormatByArgumentIndex(1, new ChoiceFormat(limits, prefixes));
+
+		return this;
 	}
 
 	/**
@@ -288,6 +360,7 @@ public class UnitFormat extends NumberFormat
 	public void setSymbol(String symbol)
 	{
 		this.symbol = symbol;
+		init();
 	}
 
 	/**
@@ -310,6 +383,7 @@ public class UnitFormat extends NumberFormat
 	public void setInterval(double interval)
 	{
 		this.interval = interval;
+		init();
 	}
 
 	/**
@@ -359,6 +433,7 @@ public class UnitFormat extends NumberFormat
 	public void setFormat(String format)
 	{
 		this.format = format;
+		init();
 	}
 
 	/**
@@ -381,6 +456,7 @@ public class UnitFormat extends NumberFormat
 	public void setMultiples(String[] multiples)
 	{
 		this.multiples = multiples.clone();
+		init();
 	}
 
 	/**
@@ -403,6 +479,7 @@ public class UnitFormat extends NumberFormat
 	public void setSubdivisions(String[] subdivisions)
 	{
 		this.subdivisions = subdivisions.clone();
+		init();
 	}
 
 	@Override
@@ -475,5 +552,17 @@ public class UnitFormat extends NumberFormat
 	public void setRoundingMode(RoundingMode roundingMode)
 	{
 		numberFormat.setRoundingMode(roundingMode);
+	}
+
+	@Override
+	public boolean isParseIntegerOnly()
+	{
+		return numberFormat.isParseIntegerOnly();
+	}
+
+	@Override
+	public void setParseIntegerOnly(boolean newValue)
+	{
+		numberFormat.setParseIntegerOnly(newValue);
 	}
 }
