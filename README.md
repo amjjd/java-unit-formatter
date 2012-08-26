@@ -22,6 +22,16 @@ Sample code
     assertEquals("0.8 KiB", format.format(769L));
     assertEquals("0.8 MiB", format.format(815L * 1024L));
 
+    assertEquals(0L, format.parse("0 B"));
+
+    assertEquals(25L * 1024L + 512L, format.parse("25.5 KiB"));
+    assertEquals(100L * 1024L * 1024L, format.parse("100 MiB"));
+    assertEquals(1024L, format.parse("1 KiB"));
+
+    assertEquals(768L, format.parse("768 B"));
+    assertEquals(1024.0 * 0.8, format.parse("0.8 KiB"));
+    assertEquals(1024.0 * 1024.0 * 0.8, format.parse("0.8 MiB"));
+
     format.setNextUnitAt(1536.0);
     assertEquals("768 B", format.format(768L));
     assertEquals("1,024 B", format.format(1024L));
@@ -31,6 +41,9 @@ Sample code
     format = UnitFormat.getBytesInstance(Locale.FRENCH);
     assertEquals("25,5 Kio", format.format(25L * 1024L + 512L));
     assertEquals("1 Kio", format.format(1024L));
+
+    assertEquals(25L * 1024L + 512L, format.parse("25,5 Kio"));
+    assertEquals(1024L, format.parse("1 Kio"));
 
     format = UnitFormat.getSIInstance(Locale.ENGLISH, "m");
     format.setMinimumIntegerDigits(1);
