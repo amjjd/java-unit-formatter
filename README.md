@@ -75,7 +75,7 @@ Add a `repository` to your `pom.xml`:
     <repositories>
       ...
       <repository>
-        <id>cemerick-snapshots</id>
+        <id>amjjd-snapshots</id>
         <url>https://github.com/amjjd/amjjd-mvn-repo/raw/master/releases/</url>
       </repository>
       ...
